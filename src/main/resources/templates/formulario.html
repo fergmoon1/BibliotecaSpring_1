@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Formulario de Elemento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        .form-group input[type="submit"], .form-group input[type="button"] {
+            width: auto;
+            padding: 10px 20px;
+            background-color: #70A2B4;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .form-group input[type="submit"]:hover, .form-group input[type="button"]:hover {
+            background-color: #5b8ca3;
+        }
+        .form-group input[type="button"] {
+            background-color: #dc3545;
+        }
+        .form-group input[type="button"]:hover {
+            background-color: #c82333;
+        }
+        .error {
+            color: red;
+            font-size: 0.9em;
+        }
+    </style>
+    <script>
+        function toggleFields() {
+            const tipo = document.getElementById("tipo").value;
+            const libroFields = document.getElementById("libroFields");
+            const revistaFields = document.getElementById("revistaFields");
+            const dvdFields = document.getElementById("dvdFields");
+
+            libroFields.style.display = tipo === "Libro" ? "block" : "none";
+            revistaFields.style.display = tipo === "Revista" ? "block" : "none";
+            dvdFields.style.display = tipo === "DVD" ? "block" : "none";
+        }
+
+        window.onload = function() {
+            toggleFields();
+        };
+    </script>
+</head>
+<body>
+<div class="form-container">
+    <h2 th:text="${elemento.id != null} ? 'Editar Elemento' : 'Agregar Elemento'"></h2>
+    <form th:action="${elemento.id != null} ? @{/biblioteca/editar/{id}(id=${elemento.id})} : @{/biblioteca/agregar}" method="post">
+        <div class="form-group">
+            <label for="tipo">Tipo:</label>
+            <select id="tipo" name="tipo" onchange="toggleFields()" th:disabled="${elemento.id != null}">
+                <option th:each="tipo : ${tipos}" th:value="${tipo}" th:text="${tipo}" th:selected="${tipo == elemento.tipo}"></option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="titulo">Título:</label>
+            <input type="text" id="titulo" name="titulo" th:value="${elemento.titulo}" required/>
+        </div>
+        <div class="form-group">
+            <label for="autor">Autor:</label>
+            <input type="text" id="autor" name="autor" th:value="${elemento.autor}" required/>
+        </div>
+        <div class="form-group">
+            <label for="anoPublicacion">Año de Publicación:</label>
+            <input type="number" id="anoPublicacion" name="anoPublicacion" th:value="${elemento.anoPublicacion}" required/>
+        </div>
+
+        <!-- Campos específicos para Libro -->
+        <div id="libroFields" style="display: none;">
+            <div class="form-group">
+                <label for="isbn">ISBN:</label>
+                <input type="text" id="isbn" name="isbn" th:value="${elemento instanceof T(edu.sena.bibliotecaspring_1.model.Libro) ? elemento.isbn : ''}"/>
+            </div>
+            <div class="form-group">
+                <label for="numeroPaginas">Número de Páginas:</label>
+                <input type="number" id="numeroPaginas" name="numeroPaginas" th:value="${elemento instanceof T(edu.sena.bibliotecaspring_1.model.Libro) ? elemento.numeroPaginas : ''}"/>
+            </div>
+            <div class="form-group">
+                <label for="generoLibro">Género:</label>
+                <input type="text" id="generoLibro" name="generoLibro" th:value="${elemento instanceof T(edu.sena.bibliotecaspring_1.model.Libro) ? elemento.genero : ''}"/>
+            </div>
+            <div class="form-group">
+                <label for="editorial">Editorial:</label>
+                <input type="text" id="editorial" name="editorial" th:value="${elemento instanceof T(edu.sena.bibliotecaspring_1.model.Libro) ? elemento.editorial : ''}"/>
+            </div>
+        </div>
+
+        <!-- Campos específicos para Revista -->
+        <div id="revistaFields" style="display: none;">
+            <div class="form-group">
+                <label for="numeroEdicion">Número de Edición:</label>
+                <input type="number" id="numeroEdicion" name="numeroEdicion" th:value="${elemento instanceof T(edu.sena.bibliotecaspring_1.model.Revista) ? elemento.numeroEdicion : ''}"/>
+            </div>
+            <div class="form-group">
+                <label for="categoria">Categoría:</label>
+                <input type="text" id="categoria" name="categoria" th:value="${elemento instanceof T(edu.sena.bibliotecaspring_1.model.Revista) ? elemento.categoria : ''}"/>
+            </div>
+        </div>
+
+        <!-- Campos específicos para DVD -->
+        <div id="dvdFields" style="display: none;">
+            <div class="form-group">
+                <label for="duracion">Duración (min):</label>
+                <input type="number" id="duracion" name="duracion" th:value="${elemento instanceof T(edu.sena.bibliotecaspring_1.model.DVD) ? elemento.duracion : ''}"/>
+            </div>
+            <div class="form-group">
+                <label for="generoDVD">Género:</label>
+                <input type="text" id="generoDVD" name="generoDVD" th:value="${elemento instanceof T(edu.sena.bibliotecaspring_1.model.DVD) ? elemento.genero : ''}"/>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <input type="submit" value="Guardar"/>
+            <input type="button" value="Cancelar" onclick="window.location.href='/biblioteca'"/>
+        </div>
+    </form>
+</div>
+</body>
+</html>

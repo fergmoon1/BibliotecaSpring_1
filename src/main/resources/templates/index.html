@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Biblioteca</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #70A2B4;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #ddd;
+        }
+        .mensaje, .error {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .mensaje {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .actions a {
+            margin-right: 10px;
+            color: #007bff;
+            text-decoration: none;
+        }
+        .actions a:hover {
+            text-decoration: underline;
+        }
+        .filtros {
+            margin: 10px 0;
+        }
+        .filtros form, .filtros a {
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .filtros select, .filtros input[type="text"], .filtros button {
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #ddd;
+        }
+        .filtros button {
+            background-color: #70A2B4;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .filtros button:hover {
+            background-color: #5b8ca3;
+        }
+        .ayuda-btn {
+            padding: 5px 10px;
+            background-color: #70A2B4;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .ayuda-btn:hover {
+            background-color: #5b8ca3;
+        }
+    </style>
+</head>
+<body>
+<h1>Sistema de Biblioteca</h1>
+<div class="filtros">
+    <form th:action="@{/biblioteca/filtrarPorTipo}" method="get" style="display: inline;">
+        <select name="tipo" onchange="this.form.submit()">
+            <option value="">Todos</option>
+            <option value="Libro">Libros</option>
+            <option value="Revista">Revistas</option>
+            <option value="DVD">DVDs</option>
+        </select>
+    </form>
+    <form th:action="@{/biblioteca/buscar}" method="get" style="display: inline;">
+        <input type="text" name="genero" placeholder="Buscar por género" style="padding: 5px;">
+        <button type="submit" style="padding: 5px 10px;">Buscar</button>
+    </form>
+    <form th:action="@{/biblioteca/buscarAutor}" method="get" style="display: inline;">
+        <input type="text" name="autor" placeholder="Buscar por autor" style="padding: 5px;">
+        <button type="submit" style="padding: 5px 10px;">Buscar</button>
+    </form>
+    <form th:action="@{/biblioteca/buscarEditorial}" method="get" style="display: inline;">
+        <input type="text" name="editorial" placeholder="Buscar por editorial" style="padding: 5px;">
+        <button type="submit" style="padding: 5px 10px;">Buscar</button>
+    </form>
+    <a th:href="@{/biblioteca/agregar}" style="margin-left: 10px;">Agregar Nuevo Elemento</a>
+    <button class="ayuda-btn" onclick="mostrarAyuda()">Ayuda</button>
+</div>
+
+<div th:if="${mensaje}" class="mensaje" th:text="${mensaje}"></div>
+<div th:if="${error}" class="error" th:text="${error}"></div>
+
+<h2 th:text="${tituloFiltro != null} ? tituloFiltro : 'Todos los Elementos'"></h2>
+<table>
+    <thead>
+    <tr>
+        <th>Tipo</th>
+        <th>Título</th>
+        <th>Autor</th>
+        <th>Año</th>
+        <th>Acciones</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="elemento : ${elementos}">
+        <td th:text="${elemento.getTipo()}"></td>
+        <td th:text="${elemento.titulo}"></td>
+        <td th:text="${elemento.autor}"></td>
+        <td th:text="${elemento.anoPublicacion}"></td>
+        <td class="actions">
+            <a th:href="@{/biblioteca/editar/{id}(id=${elemento.id})}">Editar</a>
+            <a th:href="@{/biblioteca/eliminar/{id}(id=${elemento.id})}" onclick="return confirm('¿Estás seguro?')">Eliminar</a>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+<div id="ayudaModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);">
+    <div style="background: white; margin: 10% auto; padding: 20px; width: 70%; max-width: 500px; border-radius: 5px;">
+        <h3>Ayuda</h3>
+        <p>Esta aplicación permite gestionar una biblioteca. Funciones principales:</p>
+        <ul>
+            <li>Filtra elementos por tipo (Libros, Revistas, DVDs) usando el menú desplegable.</li>
+            <li>Busca por género, autor o editorial usando los formularios de búsqueda.</li>
+            <li>Agrega nuevos elementos haciendo clic en 'Agregar Nuevo Elemento'.</li>
+            <li>Edita o elimina elementos desde la lista.</li>
+        </ul>
+        <button onclick="cerrarAyuda()" style="padding: 5px 10px; background-color: #dc3545; color: white; border: none; border-radius: 3px;">Cerrar</button>
+    </div>
+</div>
+
+<script>
+    function mostrarAyuda() {
+        document.getElementById('ayudaModal').style.display = 'block';
+    }
+    function cerrarAyuda() {
+        document.getElementById('ayudaModal').style.display = 'none';
+    }
+</script>
+</body>
+</html>
