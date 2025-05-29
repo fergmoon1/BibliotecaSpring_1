@@ -121,27 +121,60 @@ public class BibliotecaController {
     }
 
     @PostMapping("/agregar")
-    public String agregarElemento(@RequestParam String tipo,
-                                  @RequestParam String titulo,
-                                  @RequestParam String autor,
-                                  @RequestParam int anoPublicacion,
+    public String agregarElemento(@RequestParam(required = false) String tipo,
+                                  @RequestParam(required = false) String titulo,
+                                  @RequestParam(required = false) String autor,
+                                  @RequestParam(required = false) String anoPublicacion,
                                   @RequestParam(required = false) String isbn,
-                                  @RequestParam(required = false) Integer numeroPaginas,
+                                  @RequestParam(required = false) String numeroPaginas,
                                   @RequestParam(required = false) String generoLibro,
                                   @RequestParam(required = false) String editorial,
-                                  @RequestParam(required = false) Integer numeroEdicion,
+                                  @RequestParam(required = false) String numeroEdicion,
                                   @RequestParam(required = false) String categoria,
-                                  @RequestParam(required = false) Integer duracion,
+                                  @RequestParam(required = false) String duracion,
                                   @RequestParam(required = false) String generoDVD,
                                   RedirectAttributes redirectAttributes) {
         try {
+            // Validaciones básicas
+            if (tipo == null || tipo.trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("error", "Debe seleccionar un tipo de elemento");
+                return "redirect:/biblioteca/agregar";
+            }
+
+            if (titulo == null || titulo.trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("error", "El título es obligatorio");
+                return "redirect:/biblioteca/agregar";
+            }
+
+            if (autor == null || autor.trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("error", "El autor es obligatorio");
+                return "redirect:/biblioteca/agregar";
+            }
+
+            // Validar y convertir año de publicación
+            int anoPublicacionInt;
+            try {
+                if (anoPublicacion == null || anoPublicacion.trim().isEmpty()) {
+                    redirectAttributes.addFlashAttribute("error", "El año de publicación es obligatorio");
+                    return "redirect:/biblioteca/agregar";
+                }
+                anoPublicacionInt = Integer.parseInt(anoPublicacion.trim());
+                if (anoPublicacionInt <= 0) {
+                    redirectAttributes.addFlashAttribute("error", "El año de publicación debe ser mayor que 0");
+                    return "redirect:/biblioteca/agregar";
+                }
+            } catch (NumberFormatException e) {
+                redirectAttributes.addFlashAttribute("error", "El año de publicación debe ser un número válido");
+                return "redirect:/biblioteca/agregar";
+            }
+
             Logger.logInfo("Intentando agregar elemento - Tipo: " + tipo + ", Título: " + titulo +
-                    ", Autor: " + autor + ", Año: " + anoPublicacion +
+                    ", Autor: " + autor + ", Año: " + anoPublicacionInt +
                     ", ISBN: " + isbn + ", Páginas: " + numeroPaginas + ", Género Libro: " + generoLibro +
                     ", Editorial: " + editorial + ", Edición: " + numeroEdicion + ", Categoría: " + categoria +
                     ", Duración: " + duracion + ", Género DVD: " + generoDVD);
 
-            ElementoBiblioteca nuevoElemento = crearElemento(tipo, titulo, autor, anoPublicacion, isbn, numeroPaginas,
+            ElementoBiblioteca nuevoElemento = crearElemento(tipo, titulo, autor, anoPublicacionInt, isbn, numeroPaginas,
                     generoLibro, editorial, numeroEdicion, categoria, duracion, generoDVD);
             elementoRepository.save(nuevoElemento);
             Logger.logInfo("Elemento agregado con éxito: " + titulo);
@@ -149,9 +182,11 @@ public class BibliotecaController {
         } catch (BibliotecaException e) {
             Logger.logError("Error al agregar elemento", e);
             redirectAttributes.addFlashAttribute("error", "Error al agregar elemento: " + e.getMessage());
+            return "redirect:/biblioteca/agregar";
         } catch (Exception e) {
             Logger.logError("Error inesperado al agregar elemento", e);
             redirectAttributes.addFlashAttribute("error", "Error inesperado al agregar elemento: " + e.getMessage());
+            return "redirect:/biblioteca/agregar";
         }
         return "redirect:/biblioteca";
     }
@@ -181,17 +216,26 @@ public class BibliotecaController {
                                      @RequestParam String tipo,
                                      @RequestParam String titulo,
                                      @RequestParam String autor,
-                                     @RequestParam int anoPublicacion,
+                                     @RequestParam String anoPublicacion,
                                      @RequestParam(required = false) String isbn,
-                                     @RequestParam(required = false) Integer numeroPaginas,
+                                     @RequestParam(required = false) String numeroPaginas,
                                      @RequestParam(required = false) String generoLibro,
                                      @RequestParam(required = false) String editorial,
-                                     @RequestParam(required = false) Integer numeroEdicion,
+                                     @RequestParam(required = false) String numeroEdicion,
                                      @RequestParam(required = false) String categoria,
-                                     @RequestParam(required = false) Integer duracion,
+                                     @RequestParam(required = false) String duracion,
                                      @RequestParam(required = false) String generoDVD,
                                      RedirectAttributes redirectAttributes) {
         try {
+            // Validar y convertir año de publicación
+            int anoPublicacionInt;
+            try {
+                anoPublicacionInt = Integer.parseInt(anoPublicacion.trim());
+            } catch (NumberFormatException e) {
+                redirectAttributes.addFlashAttribute("error", "El año de publicación debe ser un número válido");
+                return "redirect:/biblioteca/editar/" + id;
+            }
+
             ElementoBiblioteca elementoExistente = elementoRepository.findById(id)
                     .orElseThrow(() -> new BibliotecaException("Elemento no encontrado con ID: " + id));
 
@@ -214,7 +258,7 @@ public class BibliotecaController {
 
             if (!tipoActual.equals(tipoNuevo)) {
                 // Si el tipo cambió, creamos un nuevo elemento y eliminamos el antiguo
-                ElementoBiblioteca nuevoElemento = crearElemento(tipo, titulo, autor, anoPublicacion, isbn, numeroPaginas,
+                ElementoBiblioteca nuevoElemento = crearElemento(tipo, titulo, autor, anoPublicacionInt, isbn, numeroPaginas,
                         generoLibro, editorial, numeroEdicion, categoria, duracion, generoDVD);
                 nuevoElemento.setId(id); // Mantenemos el mismo ID
                 elementoRepository.delete(elementoExistente);
@@ -223,21 +267,42 @@ public class BibliotecaController {
                 // Si el tipo no cambió, actualizamos los campos del elemento existente
                 elementoExistente.setTitulo(titulo);
                 elementoExistente.setAutor(autor);
-                elementoExistente.setAnoPublicacion(anoPublicacion);
+                elementoExistente.setAnoPublicacion(anoPublicacionInt);
 
                 if (elementoExistente instanceof Libro) {
                     Libro libro = (Libro) elementoExistente;
                     libro.setIsbn(isbn != null ? isbn : "");
-                    libro.setNumeroPaginas(numeroPaginas != null ? numeroPaginas : 0);
+                    int numPaginas;
+                    try {
+                        numPaginas = (numeroPaginas != null && !numeroPaginas.trim().isEmpty()) ?
+                                Integer.parseInt(numeroPaginas.trim()) : 0;
+                    } catch (NumberFormatException e) {
+                        numPaginas = 0;
+                    }
+                    libro.setNumeroPaginas(numPaginas);
                     libro.setGenero(generoLibro != null ? generoLibro : "");
                     libro.setEditorial(editorial != null ? editorial : "");
                 } else if (elementoExistente instanceof Revista) {
                     Revista revista = (Revista) elementoExistente;
-                    revista.setNumeroEdicion(numeroEdicion != null ? numeroEdicion : 0);
+                    int numEdicion;
+                    try {
+                        numEdicion = (numeroEdicion != null && !numeroEdicion.trim().isEmpty()) ?
+                                Integer.parseInt(numeroEdicion.trim()) : 0;
+                    } catch (NumberFormatException e) {
+                        numEdicion = 0;
+                    }
+                    revista.setNumeroEdicion(numEdicion);
                     revista.setCategoria(categoria != null ? categoria : "");
                 } else if (elementoExistente instanceof DVD) {
                     DVD dvd = (DVD) elementoExistente;
-                    dvd.setDuracion(duracion != null ? duracion : 0);
+                    int dur;
+                    try {
+                        dur = (duracion != null && !duracion.trim().isEmpty()) ?
+                                Integer.parseInt(duracion.trim()) : 0;
+                    } catch (NumberFormatException e) {
+                        dur = 0;
+                    }
+                    dvd.setDuracion(dur);
                     dvd.setGenero(generoDVD != null ? generoDVD : "");
                 }
                 elementoRepository.save(elementoExistente);
@@ -353,8 +418,8 @@ public class BibliotecaController {
     }
 
     private ElementoBiblioteca crearElemento(String tipo, String titulo, String autor, int anoPublicacion,
-                                             String isbn, Integer numeroPaginas, String generoLibro, String editorial,
-                                             Integer numeroEdicion, String categoria, Integer duracion, String generoDVD)
+                                             String isbn, String numeroPaginas, String generoLibro, String editorial,
+                                             String numeroEdicion, String categoria, String duracion, String generoDVD)
             throws BibliotecaException {
         if (titulo == null || titulo.trim().isEmpty()) {
             throw new BibliotecaException("El título no puede estar vacío");
@@ -368,20 +433,57 @@ public class BibliotecaController {
 
         switch (tipo) {
             case "Libro":
-                if (numeroPaginas == null || numeroPaginas <= 0) {
-                    throw new BibliotecaException("Número de páginas inválido");
+                int numPaginas;
+                try {
+                    if (numeroPaginas == null || numeroPaginas.trim().isEmpty()) {
+                        throw new BibliotecaException("El número de páginas es obligatorio para los libros");
+                    }
+                    numPaginas = Integer.parseInt(numeroPaginas.trim());
+                    if (numPaginas <= 0) {
+                        throw new BibliotecaException("El número de páginas debe ser mayor que 0");
+                    }
+                } catch (NumberFormatException e) {
+                    throw new BibliotecaException("El número de páginas debe ser un número válido");
                 }
-                return new Libro(titulo, autor, anoPublicacion, isbn, numeroPaginas, generoLibro, editorial);
+                return new Libro(titulo, autor, anoPublicacion,
+                        isbn != null ? isbn.trim() : "",
+                        numPaginas,
+                        generoLibro != null ? generoLibro.trim() : "",
+                        editorial != null ? editorial.trim() : "");
+
             case "Revista":
-                if (numeroEdicion == null || numeroEdicion <= 0) {
-                    throw new BibliotecaException("Número de edición inválido");
+                int numEdicion;
+                try {
+                    if (numeroEdicion == null || numeroEdicion.trim().isEmpty()) {
+                        throw new BibliotecaException("El número de edición es obligatorio para las revistas");
+                    }
+                    numEdicion = Integer.parseInt(numeroEdicion.trim());
+                    if (numEdicion <= 0) {
+                        throw new BibliotecaException("El número de edición debe ser mayor que 0");
+                    }
+                } catch (NumberFormatException e) {
+                    throw new BibliotecaException("El número de edición debe ser un número válido");
                 }
-                return new Revista(titulo, autor, anoPublicacion, numeroEdicion, categoria, editorial, 0);
+                return new Revista(titulo, autor, anoPublicacion, numEdicion,
+                        categoria != null ? categoria.trim() : "",
+                        editorial != null ? editorial.trim() : "", 0);
+
             case "DVD":
-                if (duracion == null || duracion <= 0) {
-                    throw new BibliotecaException("Duración inválida");
+                int dur;
+                try {
+                    if (duracion == null || duracion.trim().isEmpty()) {
+                        throw new BibliotecaException("La duración es obligatoria para los DVDs");
+                    }
+                    dur = Integer.parseInt(duracion.trim());
+                    if (dur <= 0) {
+                        throw new BibliotecaException("La duración debe ser mayor que 0");
+                    }
+                } catch (NumberFormatException e) {
+                    throw new BibliotecaException("La duración debe ser un número válido");
                 }
-                return new DVD(titulo, autor, anoPublicacion, duracion, generoDVD);
+                return new DVD(titulo, autor, anoPublicacion, dur,
+                        generoDVD != null ? generoDVD.trim() : "");
+
             default:
                 throw new BibliotecaException("Tipo de elemento no válido: " + tipo);
         }
