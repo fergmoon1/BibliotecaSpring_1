@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Biblioteca</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+    <h1>Biblioteca</h1>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+    <div th:if="${mensaje}" class="alert alert-success" th:text="${mensaje}"></div>
+    <h2 th:text="${tituloFiltro ?: 'Lista de Elementos'}"></h2>
+
+    <!-- Formulario para buscar por título -->
+    <form th:action="@{/biblioteca/buscarTitulo}" method="get" class="mb-3">
+        <div class="input-group">
+            <input type="text" name="titulo" class="form-control" placeholder="Buscar por título..." required>
+            <button type="submit" class="btn btn-primary">Buscar</button>
+        </div>
+    </form>
+
+    <!-- Formulario para buscar por autor -->
+    <form th:action="@{/biblioteca/buscarAutor}" method="get" class="mb-3">
+        <div class="input-group">
+            <input type="text" name="autor" class="form-control" placeholder="Buscar por autor..." required>
+            <button type="submit" class="btn btn-primary">Buscar</button>
+        </div>
+    </form>
+
+    <!-- Formulario para buscar por género -->
+    <form th:action="@{/biblioteca/buscarGenero}" method="get" class="mb-3">
+        <div class="input-group">
+            <input type="text" name="genero" class="form-control" placeholder="Buscar por género..." required>
+            <button type="submit" class="btn btn-primary">Buscar</button>
+        </div>
+    </form>
+
+    <!-- Formulario para buscar por editorial -->
+    <form th:action="@{/biblioteca/buscarEditorial}" method="get" class="mb-3">
+        <div class="input-group">
+            <input type="text" name="editorial" class="form-control" placeholder="Buscar por editorial..." required>
+            <button type="submit" class="btn btn-primary">Buscar</button>
+        </div>
+    </form>
+
+    <a href="/biblioteca/agregar" class="btn btn-success mb-3">Agregar Elemento</a>
+    <div class="btn-group mb-3">
+        <a href="/biblioteca/libros" class="btn btn-info">Ver Libros</a>
+        <a href="/biblioteca/revistas" class="btn btn-info">Ver Revistas</a>
+        <a href="/biblioteca/dvds" class="btn btn-info">Ver DVDs</a>
+    </div>
+    <table class="table table-bordered">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Título</th>
+            <th>Autor</th>
+            <th>Año de Publicación</th>
+            <th>Tipo</th>
+            <th>Detalles</th>
+            <th>Acciones</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="elemento : ${elementos}">
+            <td th:text="${elemento.id}"></td>
+            <td th:text="${elemento.titulo}"></td>
+            <td th:text="${elemento.autor}"></td>
+            <td th:text="${elemento.anoPublicacion}"></td>
+            <td th:text="${elemento.class.simpleName}"></td>
+            <td>
+                <span th:if="${elemento.class.simpleName == 'Libro'}">
+                    ISBN: <span th:text="${elemento.isbn}"></span>,
+                    Páginas: <span th:text="${elemento.numeroPaginas}"></span>,
+                    Género: <span th:text="${elemento.genero}"></span>,
+                    Editorial: <span th:text="${elemento.editorial}"></span>
+                </span>
+                <span th:if="${elemento.class.simpleName == 'Revista'}">
+                    Edición: <span th:text="${elemento.numeroEdicion}"></span>,
+                    Categoría: <span th:text="${elemento.categoria}"></span>,
+                    Editorial: <span th:text="${elemento.editorial}"></span>
+                </span>
+                <span th:if="${elemento.class.simpleName == 'DVD'}">
+                    Duración: <span th:text="${elemento.duracion}"></span> min,
+                    Género: <span th:text="${elemento.genero}"></span>
+                </span>
+            </td>
+            <td>
+                <a th:href="@{/biblioteca/editar/{id}(id=${elemento.id})}" class="btn btn-primary btn-sm">Editar</a>
+                <a th:href="@{/biblioteca/eliminar/{id}(id=${elemento.id})}" class="btn btn-danger btn-sm">Eliminar</a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>
