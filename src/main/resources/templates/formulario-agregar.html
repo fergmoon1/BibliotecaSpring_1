@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Agregar Elemento</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+  <h1>Agregar Nuevo Elemento</h1>
+  <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+  <form th:action="@{/biblioteca/agregar}" th:method="post" class="needs-validation" novalidate>
+    <div class="mb-3">
+      <label for="tipo" class="form-label">Tipo de Elemento</label>
+      <select id="tipo" name="tipo" class="form-select" required onchange="mostrarCampos()">
+        <option value="" disabled selected>Seleccione un tipo</option>
+        <option th:each="tipo : ${tipos}" th:value="${tipo}" th:text="${tipo}"></option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label for="titulo" class="form-label">Título</label>
+      <input type="text" id="titulo" name="titulo" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label for="autor" class="form-label">Autor</label>
+      <input type="text" id="autor" name="autor" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label for="anoPublicacion" class="form-label">Año de Publicación</label>
+      <input type="number" id="anoPublicacion" name="anoPublicacion" class="form-control" required>
+    </div>
+
+    <!-- Campos para Libro -->
+    <div id="libroFields" class="mb-3 d-none">
+      <label for="isbn" class="form-label">ISBN</label>
+      <input type="text" id="isbn" name="isbn" class="form-control">
+      <label for="numeroPaginas" class="form-label">Número de Páginas</label>
+      <input type="number" id="numeroPaginas" name="numeroPaginas" class="form-control" min="1" required>
+      <label for="generoLibro" class="form-label">Género</label>
+      <input type="text" id="generoLibro" name="generoLibro" class="form-control">
+      <label for="editorial" class="form-label">Editorial</label>
+      <input type="text" id="editorial" name="editorial" class="form-control">
+    </div>
+
+    <!-- Campos para Revista -->
+    <div id="revistaFields" class="mb-3 d-none">
+      <label for="numeroEdicion" class="form-label">Número de Edición</label>
+      <input type="number" id="numeroEdicion" name="numeroEdicion" class="form-control" min="1" required>
+      <label for="categoria" class="form-label">Categoría</label>
+      <input type="text" id="categoria" name="categoria" class="form-control">
+      <label for="editorialRevista" class="form-label">Editorial</label>
+      <input type="text" id="editorialRevista" name="editorial" class="form-control">
+    </div>
+
+    <!-- Campos para DVD -->
+    <div id="dvdFields" class="mb-3 d-none">
+      <label for="duracion" class="form-label">Duración (minutos)</label>
+      <input type="number" id="duracion" name="duracion" class="form-control" min="1" required>
+      <label for="generoDVD" class="form-label">Género</label>
+      <input type="text" id="generoDVD" name="generoDVD" class="form-control">
+    </div>
+
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <a href="/biblioteca" class="btn btn-secondary">Cancelar</a>
+  </form>
+</div>
+
+<script>
+  function mostrarCampos() {
+    const tipo = document.getElementById('tipo').value;
+    document.getElementById('libroFields').className = 'mb-3' + (tipo === 'Libro' ? '' : ' d-none');
+    document.getElementById('revistaFields').className = 'mb-3' + (tipo === 'Revista' ? '' : ' d-none');
+    document.getElementById('dvdFields').className = 'mb-3' + (tipo === 'DVD' ? '' : ' d-none');
+  }
+
+  // Ejecutar la función al cargar la página para manejar el valor inicial
+  window.onload = mostrarCampos;
+</script>
+</body>
+</html>

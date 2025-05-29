@@ -1,10 +1,10 @@
 package edu.sena.bibliotecaspring_1.controller;
 
-import edu.sena.bibliotecaspring_1.dao.ElementoBibliotecaRepository;
 import edu.sena.bibliotecaspring_1.model.ElementoBiblioteca;
 import edu.sena.bibliotecaspring_1.model.Libro;
 import edu.sena.bibliotecaspring_1.model.Revista;
 import edu.sena.bibliotecaspring_1.model.DVD;
+import edu.sena.bibliotecaspring_1.dao.ElementoBibliotecaRepository;
 import edu.sena.bibliotecaspring_1.util.BibliotecaException;
 import edu.sena.bibliotecaspring_1.util.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,9 +13,10 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Controller
 @RequestMapping("/biblioteca")
@@ -29,6 +30,7 @@ public class BibliotecaController {
         try {
             List<ElementoBiblioteca> elementos = elementoRepository.findAll();
             model.addAttribute("elementos", elementos);
+            model.addAttribute("tituloFiltro", "Todos los Elementos");
         } catch (Exception e) {
             Logger.logError("Error al listar elementos", e);
             model.addAttribute("error", "Error al listar elementos: " + e.getMessage());
@@ -36,38 +38,93 @@ public class BibliotecaController {
         return "index";
     }
 
+    @GetMapping("/libros")
+    public String listarLibros(Model model) {
+        try {
+            List<ElementoBiblioteca> libros = elementoRepository.findAllByTipo("LIBRO");
+            model.addAttribute("elementos", libros);
+            model.addAttribute("tituloFiltro", "Libros");
+        } catch (Exception e) {
+            Logger.logError("Error al listar libros", e);
+            model.addAttribute("error", "Error al listar libros: " + e.getMessage());
+            model.addAttribute("elementos", new ArrayList<>());
+        }
+        return "index";
+    }
+
+    @GetMapping("/dvds")
+    public String listarDvds(Model model) {
+        try {
+            List<ElementoBiblioteca> dvds = elementoRepository.findAllByTipo("DVD");
+            model.addAttribute("elementos", dvds);
+            model.addAttribute("tituloFiltro", "DVDs");
+        } catch (Exception e) {
+            Logger.logError("Error al listar DVDs", e);
+            model.addAttribute("error", "Error al listar DVDs: " + e.getMessage());
+            model.addAttribute("elementos", new ArrayList<>());
+        }
+        return "index";
+    }
+
+    @GetMapping("/revistas")
+    public String listarRevistas(Model model) {
+        try {
+            List<ElementoBiblioteca> revistas = elementoRepository.findAllByTipo("REVISTA");
+            model.addAttribute("elementos", revistas);
+            model.addAttribute("tituloFiltro", "Revistas");
+        } catch (Exception e) {
+            Logger.logError("Error al listar revistas", e);
+            model.addAttribute("error", "Error al listar revistas: " + e.getMessage());
+            model.addAttribute("elementos", new ArrayList<>());
+        }
+        return "index";
+    }
+
     @GetMapping("/filtrarPorTipo")
     public String filtrarPorTipo(@RequestParam(required = false) String tipo, Model model) {
         try {
-            List<ElementoBiblioteca> elementos = elementoRepository.findAll();
+            List<ElementoBiblioteca> elementos;
             if (tipo != null && !tipo.isEmpty()) {
-                elementos = elementos.stream()
-                        .filter(e -> {
-                            if ("Libro".equals(tipo)) return e instanceof Libro;
-                            if ("Revista".equals(tipo)) return e instanceof Revista;
-                            if ("DVD".equals(tipo)) return e instanceof DVD;
-                            return false;
-                        })
-                        .toList();
+                String tipoDiscriminador;
+                switch (tipo) {
+                    case "Libro":
+                        tipoDiscriminador = "LIBRO";
+                        break;
+                    case "Revista":
+                        tipoDiscriminador = "REVISTA";
+                        break;
+                    case "DVD":
+                        tipoDiscriminador = "DVD";
+                        break;
+                    default:
+                        throw new BibliotecaException("Tipo no válido: " + tipo);
+                }
+                elementos = elementoRepository.findAllByTipo(tipoDiscriminador);
                 model.addAttribute("tituloFiltro", "Mostrando: " + tipo + "s");
+            } else {
+                elementos = elementoRepository.findAll();
+                model.addAttribute("tituloFiltro", "Todos los Elementos");
             }
             model.addAttribute("elementos", elementos);
         } catch (Exception e) {
             Logger.logError("Error al filtrar por tipo: " + tipo, e);
             model.addAttribute("error", "Error al filtrar elementos: " + e.getMessage());
+            model.addAttribute("elementos", new ArrayList<>());
         }
         return "index";
     }
 
     @GetMapping("/agregar")
     public String mostrarFormularioAgregar(Model model) {
-        model.addAttribute("elemento", new Libro());
         model.addAttribute("tipos", new String[]{"Libro", "Revista", "DVD"});
-        return "formulario";
+        return "formulario-agregar";
     }
 
     @PostMapping("/agregar")
-    public String agregarElemento(@ModelAttribute ElementoBiblioteca elemento, @RequestParam String tipo,
+    public String agregarElemento(@RequestParam String tipo,
+                                  @RequestParam String titulo,
+                                  @RequestParam String autor,
+                                  @RequestParam int anoPublicacion,
                                   @RequestParam(required = false) String isbn,
                                   @RequestParam(required = false) Integer numeroPaginas,
                                   @RequestParam(required = false) String generoLibro,
@@ -78,15 +135,23 @@ public class BibliotecaController {
                                   @RequestParam(required = false) String generoDVD,
                                   RedirectAttributes redirectAttributes) {
         try {
-            ElementoBiblioteca nuevoElemento = crearElemento(tipo, elemento.getTitulo(), elemento.getAutor(),
-                    elemento.getAnoPublicacion(), isbn, numeroPaginas, generoLibro, editorial,
-                    numeroEdicion, categoria, duracion, generoDVD);
+            Logger.logInfo("Intentando agregar elemento - Tipo: " + tipo + ", Título: " + titulo +
+                    ", Autor: " + autor + ", Año: " + anoPublicacion +
+                    ", ISBN: " + isbn + ", Páginas: " + numeroPaginas + ", Género Libro: " + generoLibro +
+                    ", Editorial: " + editorial + ", Edición: " + numeroEdicion + ", Categoría: " + categoria +
+                    ", Duración: " + duracion + ", Género DVD: " + generoDVD);
+
+            ElementoBiblioteca nuevoElemento = crearElemento(tipo, titulo, autor, anoPublicacion, isbn, numeroPaginas,
+                    generoLibro, editorial, numeroEdicion, categoria, duracion, generoDVD);
             elementoRepository.save(nuevoElemento);
-            Logger.logInfo("Elemento agregado: " + elemento.getTitulo());
+            Logger.logInfo("Elemento agregado con éxito: " + titulo);
             redirectAttributes.addFlashAttribute("mensaje", "Elemento agregado con éxito");
         } catch (BibliotecaException e) {
             Logger.logError("Error al agregar elemento", e);
             redirectAttributes.addFlashAttribute("error", "Error al agregar elemento: " + e.getMessage());
+        } catch (Exception e) {
+            Logger.logError("Error inesperado al agregar elemento", e);
+            redirectAttributes.addFlashAttribute("error", "Error inesperado al agregar elemento: " + e.getMessage());
         }
         return "redirect:/biblioteca";
     }
@@ -98,17 +163,25 @@ public class BibliotecaController {
                     .orElseThrow(() -> new BibliotecaException("Elemento no encontrado con ID: " + id));
             model.addAttribute("elemento", elemento);
             model.addAttribute("tipos", new String[]{"Libro", "Revista", "DVD"});
+            // Añadir el tipo específico al modelo para que la plantilla lo use
+            String tipo = elemento.getTipo().equals("LIBRO") ? "Libro" :
+                    elemento.getTipo().equals("REVISTA") ? "Revista" :
+                            elemento.getTipo().equals("DVD") ? "DVD" : "";
+            model.addAttribute("tipoSeleccionado", tipo);
         } catch (BibliotecaException e) {
             Logger.logError("Error al cargar elemento para edición ID: " + id, e);
             model.addAttribute("error", "Error al cargar elemento: " + e.getMessage());
             return "redirect:/biblioteca";
         }
-        return "formulario";
+        return "formulario-editar";
     }
 
     @PostMapping("/editar/{id}")
-    public String actualizarElemento(@PathVariable int id, @ModelAttribute ElementoBiblioteca elemento,
+    public String actualizarElemento(@PathVariable int id,
                                      @RequestParam String tipo,
+                                     @RequestParam String titulo,
+                                     @RequestParam String autor,
+                                     @RequestParam int anoPublicacion,
                                      @RequestParam(required = false) String isbn,
                                      @RequestParam(required = false) Integer numeroPaginas,
                                      @RequestParam(required = false) String generoLibro,
@@ -121,33 +194,63 @@ public class BibliotecaController {
         try {
             ElementoBiblioteca elementoExistente = elementoRepository.findById(id)
                     .orElseThrow(() -> new BibliotecaException("Elemento no encontrado con ID: " + id));
-            elementoExistente.setTitulo(elemento.getTitulo());
-            elementoExistente.setAutor(elemento.getAutor());
-            elementoExistente.setAnoPublicacion(elemento.getAnoPublicacion());
-            elementoExistente.setTipo(tipo);
 
-            if (elementoExistente instanceof Libro) {
-                Libro libro = (Libro) elementoExistente;
-                libro.setIsbn(isbn != null ? isbn : "");
-                libro.setNumeroPaginas(numeroPaginas != null ? numeroPaginas : 0);
-                libro.setGenero(generoLibro != null ? generoLibro : "");
-                libro.setEditorial(editorial != null ? editorial : "");
-            } else if (elementoExistente instanceof Revista) {
-                Revista revista = (Revista) elementoExistente;
-                revista.setNumeroEdicion(numeroEdicion != null ? numeroEdicion : 0);
-                revista.setCategoria(categoria != null ? categoria : "");
-            } else if (elementoExistente instanceof DVD) {
-                DVD dvd = (DVD) elementoExistente;
-                dvd.setDuracion(duracion != null ? duracion : 0);
-                dvd.setGenero(generoDVD != null ? generoDVD : "");
+            // Verificar si el tipo ha cambiado
+            String tipoActual = elementoExistente.getTipo();
+            String tipoNuevo;
+            switch (tipo) {
+                case "Libro":
+                    tipoNuevo = "LIBRO";
+                    break;
+                case "Revista":
+                    tipoNuevo = "REVISTA";
+                    break;
+                case "DVD":
+                    tipoNuevo = "DVD";
+                    break;
+                default:
+                    throw new BibliotecaException("Tipo no válido: " + tipo);
             }
 
-            elementoRepository.save(elementoExistente);
+            if (!tipoActual.equals(tipoNuevo)) {
+                // Si el tipo cambió, creamos un nuevo elemento y eliminamos el antiguo
+                ElementoBiblioteca nuevoElemento = crearElemento(tipo, titulo, autor, anoPublicacion, isbn, numeroPaginas,
+                        generoLibro, editorial, numeroEdicion, categoria, duracion, generoDVD);
+                nuevoElemento.setId(id); // Mantenemos el mismo ID
+                elementoRepository.delete(elementoExistente);
+                elementoRepository.save(nuevoElemento);
+            } else {
+                // Si el tipo no cambió, actualizamos los campos del elemento existente
+                elementoExistente.setTitulo(titulo);
+                elementoExistente.setAutor(autor);
+                elementoExistente.setAnoPublicacion(anoPublicacion);
+
+                if (elementoExistente instanceof Libro) {
+                    Libro libro = (Libro) elementoExistente;
+                    libro.setIsbn(isbn != null ? isbn : "");
+                    libro.setNumeroPaginas(numeroPaginas != null ? numeroPaginas : 0);
+                    libro.setGenero(generoLibro != null ? generoLibro : "");
+                    libro.setEditorial(editorial != null ? editorial : "");
+                } else if (elementoExistente instanceof Revista) {
+                    Revista revista = (Revista) elementoExistente;
+                    revista.setNumeroEdicion(numeroEdicion != null ? numeroEdicion : 0);
+                    revista.setCategoria(categoria != null ? categoria : "");
+                } else if (elementoExistente instanceof DVD) {
+                    DVD dvd = (DVD) elementoExistente;
+                    dvd.setDuracion(duracion != null ? duracion : 0);
+                    dvd.setGenero(generoDVD != null ? generoDVD : "");
+                }
+                elementoRepository.save(elementoExistente);
+            }
+
             Logger.logInfo("Elemento actualizado ID: " + id);
             redirectAttributes.addFlashAttribute("mensaje", "Elemento actualizado con éxito");
         } catch (BibliotecaException e) {
             Logger.logError("Error al actualizar elemento ID: " + id, e);
             redirectAttributes.addFlashAttribute("error", "Error al actualizar elemento: " + e.getMessage());
+        } catch (Exception e) {
+            Logger.logError("Error inesperado al actualizar elemento ID: " + id, e);
+            redirectAttributes.addFlashAttribute("error", "Error inesperado al actualizar elemento: " + e.getMessage());
         }
         return "redirect:/biblioteca";
     }
@@ -167,70 +270,21 @@ public class BibliotecaController {
         return "redirect:/biblioteca";
     }
 
-    @GetMapping("/buscar")
-    public String buscarPorGenero(@RequestParam String genero, Model model) {
+    @GetMapping("/buscarTitulo")
+    public String buscarPorTitulo(@RequestParam String titulo, Model model) {
         try {
-            String generoNormalizado = Normalizer.normalize(genero, Normalizer.Form.NFKD)
-                    .replaceAll("\\p{M}", "")
-                    .toLowerCase();
-            String[] palabrasBusqueda = generoNormalizado.split("\\s+");
-            List<ElementoBiblioteca> resultados = new ArrayList<>();
-
-            for (ElementoBiblioteca elemento : elementoRepository.findAll()) {
-                boolean coincide = false;
-                if (elemento instanceof Libro) {
-                    String libroGenero = ((Libro) elemento).getGenero();
-                    if (libroGenero != null && !libroGenero.trim().isEmpty()) {
-                        String libroGeneroNormalizado = Normalizer.normalize(libroGenero, Normalizer.Form.NFKD)
-                                .replaceAll("\\p{M}", "")
-                                .toLowerCase();
-                        for (String palabra : palabrasBusqueda) {
-                            if (!palabra.isEmpty() && libroGeneroNormalizado.contains(palabra)) {
-                                coincide = true;
-                                break;
-                            }
-                        }
-                    }
-                } else if (elemento instanceof DVD) {
-                    String dvdGenero = ((DVD) elemento).getGenero();
-                    if (dvdGenero != null && !dvdGenero.trim().isEmpty()) {
-                        String dvdGeneroNormalizado = Normalizer.normalize(dvdGenero, Normalizer.Form.NFKD)
-                                .replaceAll("\\p{M}", "")
-                                .toLowerCase();
-                        for (String palabra : palabrasBusqueda) {
-                            if (!palabra.isEmpty() && dvdGeneroNormalizado.contains(palabra)) {
-                                coincide = true;
-                                break;
-                            }
-                        }
-                    }
-                } else if (elemento instanceof Revista) {
-                    String revistaCategoria = ((Revista) elemento).getCategoria();
-                    if (revistaCategoria != null && !revistaCategoria.trim().isEmpty()) {
-                        String revistaCategoriaNormalizado = Normalizer.normalize(revistaCategoria, Normalizer.Form.NFKD)
-                                .replaceAll("\\p{M}", "")
-                                .toLowerCase();
-                        for (String palabra : palabrasBusqueda) {
-                            if (!palabra.isEmpty() && revistaCategoriaNormalizado.contains(palabra)) {
-                                coincide = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (coincide) {
-                    resultados.add(elemento);
-                }
-            }
-
+            List<ElementoBiblioteca> resultados = elementoRepository.findByTituloContainingIgnoreCase(titulo);
             if (resultados.isEmpty()) {
-                throw new BibliotecaException("No se encontraron elementos del género: " + genero);
+                model.addAttribute("error", "No se encontraron elementos para el título: " + titulo);
+            } else {
+                model.addAttribute("elementos", resultados);
+                model.addAttribute("tituloFiltro", "Resultados para título: " + titulo);
             }
-            model.addAttribute("elementos", resultados);
-            model.addAttribute("tituloFiltro", "Resultados para género: " + genero);
-        } catch (BibliotecaException e) {
-            Logger.logError("Error al buscar por género", e);
+        } catch (Exception e) {
+            Logger.logError("Error al buscar por título", e);
             model.addAttribute("error", "Error al buscar: " + e.getMessage());
+            model.addAttribute("elementos", new ArrayList<>());
+            model.addAttribute("tituloFiltro", "Error en la búsqueda");
         }
         return "index";
     }
@@ -238,39 +292,40 @@ public class BibliotecaController {
     @GetMapping("/buscarAutor")
     public String buscarPorAutor(@RequestParam String autor, Model model) {
         try {
-            String autorNormalizado = Normalizer.normalize(autor, Normalizer.Form.NFKD)
-                    .replaceAll("\\p{M}", "")
-                    .toLowerCase();
-            String[] palabrasBusqueda = autorNormalizado.split("\\s+");
-            List<ElementoBiblioteca> resultados = new ArrayList<>();
-
-            for (ElementoBiblioteca elemento : elementoRepository.findAll()) {
-                String elementoAutor = elemento.getAutor();
-                if (elementoAutor != null && !elementoAutor.trim().isEmpty()) {
-                    String elementoAutorNormalizado = Normalizer.normalize(elementoAutor, Normalizer.Form.NFKD)
-                            .replaceAll("\\p{M}", "")
-                            .toLowerCase();
-                    boolean coincide = false;
-                    for (String palabra : palabrasBusqueda) {
-                        if (!palabra.isEmpty() && elementoAutorNormalizado.contains(palabra)) {
-                            coincide = true;
-                            break;
-                        }
-                    }
-                    if (coincide) {
-                        resultados.add(elemento);
-                    }
-                }
-            }
-
+            List<ElementoBiblioteca> resultados = elementoRepository.findByAutorContainingIgnoreCase(autor);
             if (resultados.isEmpty()) {
-                throw new BibliotecaException("No se encontraron elementos del autor: " + autor);
+                model.addAttribute("error", "No se encontraron elementos para el autor: " + autor);
+            } else {
+                model.addAttribute("elementos", resultados);
+                model.addAttribute("tituloFiltro", "Resultados para autor: " + autor);
             }
-            model.addAttribute("elementos", resultados);
-            model.addAttribute("tituloFiltro", "Resultados para autor: " + autor);
-        } catch (BibliotecaException e) {
+        } catch (Exception e) {
             Logger.logError("Error al buscar por autor", e);
             model.addAttribute("error", "Error al buscar: " + e.getMessage());
+            model.addAttribute("elementos", new ArrayList<>());
+            model.addAttribute("tituloFiltro", "Error en la búsqueda");
+        }
+        return "index";
+    }
+
+    @GetMapping("/buscarGenero")
+    public String buscarPorGenero(@RequestParam String genero, Model model) {
+        try {
+            List<Libro> libros = elementoRepository.findLibrosByGeneroContainingIgnoreCase(genero);
+            List<DVD> dvds = elementoRepository.findDVDsByGeneroContainingIgnoreCase(genero);
+            List<ElementoBiblioteca> resultados = Stream.concat(libros.stream(), dvds.stream())
+                    .collect(Collectors.toList());
+            if (resultados.isEmpty()) {
+                model.addAttribute("error", "No se encontraron elementos para el género: " + genero);
+            } else {
+                model.addAttribute("elementos", resultados);
+                model.addAttribute("tituloFiltro", "Resultados para género: " + genero);
+            }
+        } catch (Exception e) {
+            Logger.logError("Error al buscar por género", e);
+            model.addAttribute("error", "Error al buscar: " + e.getMessage());
+            model.addAttribute("elementos", new ArrayList<>());
+            model.addAttribute("tituloFiltro", "Error en la búsqueda");
         }
         return "index";
     }
@@ -278,41 +333,21 @@ public class BibliotecaController {
     @GetMapping("/buscarEditorial")
     public String buscarPorEditorial(@RequestParam String editorial, Model model) {
         try {
-            String editorialNormalizado = Normalizer.normalize(editorial, Normalizer.Form.NFKD)
-                    .replaceAll("\\p{M}", "")
-                    .toLowerCase();
-            String[] palabrasBusqueda = editorialNormalizado.split("\\s+");
-            List<ElementoBiblioteca> resultados = new ArrayList<>();
-
-            for (ElementoBiblioteca elemento : elementoRepository.findAll()) {
-                if (elemento instanceof Libro) {
-                    String libroEditorial = ((Libro) elemento).getEditorial();
-                    if (libroEditorial != null && !libroEditorial.trim().isEmpty()) {
-                        String libroEditorialNormalizado = Normalizer.normalize(libroEditorial, Normalizer.Form.NFKD)
-                                .replaceAll("\\p{M}", "")
-                                .toLowerCase();
-                        boolean coincide = false;
-                        for (String palabra : palabrasBusqueda) {
-                            if (!palabra.isEmpty() && libroEditorialNormalizado.contains(palabra)) {
-                                coincide = true;
-                                break;
-                            }
-                        }
-                        if (coincide) {
-                            resultados.add(elemento);
-                        }
-                    }
-                }
-            }
-
+            List<Libro> libros = elementoRepository.findLibrosByEditorialContainingIgnoreCase(editorial);
+            List<Revista> revistas = elementoRepository.findRevistasByEditorialContainingIgnoreCase(editorial);
+            List<ElementoBiblioteca> resultados = Stream.concat(libros.stream(), revistas.stream())
+                    .collect(Collectors.toList());
             if (resultados.isEmpty()) {
-                throw new BibliotecaException("No se encontraron elementos de la editorial: " + editorial);
+                model.addAttribute("error", "No se encontraron elementos para la editorial: " + editorial);
+            } else {
+                model.addAttribute("elementos", resultados);
+                model.addAttribute("tituloFiltro", "Resultados para editorial: " + editorial);
             }
-            model.addAttribute("elementos", resultados);
-            model.addAttribute("tituloFiltro", "Resultados para editorial: " + editorial);
-        } catch (BibliotecaException e) {
+        } catch (Exception e) {
             Logger.logError("Error al buscar por editorial", e);
             model.addAttribute("error", "Error al buscar: " + e.getMessage());
+            model.addAttribute("elementos", new ArrayList<>());
+            model.addAttribute("tituloFiltro", "Error en la búsqueda");
         }
         return "index";
     }
@@ -341,7 +376,7 @@ public class BibliotecaController {
                 if (numeroEdicion == null || numeroEdicion <= 0) {
                     throw new BibliotecaException("Número de edición inválido");
                 }
-                return new Revista(titulo, autor, anoPublicacion, numeroEdicion, categoria);
+                return new Revista(titulo, autor, anoPublicacion, numeroEdicion, categoria, editorial, 0);
             case "DVD":
                 if (duracion == null || duracion <= 0) {
                     throw new BibliotecaException("Duración inválida");
